@@ -32,7 +32,7 @@ local tilemap
 -- Physics properties to be applied to objects when no property is set in Tiled
 local Density_default = 1.0
 local Friction_default = 0.1
-local Restitution_default = 0.8
+local Restitution_default = 0.40
 
 -- Physics properties to be applied to world when no property is set in Tiled
 local GravityX_default = 0
@@ -421,6 +421,44 @@ local function createSpriteFromBitmap(bitmap, layer, x, y)
 
 end
 
+function TiledAsWorldEditor:createDynamicBody(bitmap, myShape, x, y, scale)
+
+	bitmap:setAnchorPoint(0.5, 0.5)
+	bitmap:setScale(scale, scale)
+	
+	local TempSprite = Sprite.new()
+	
+	TempSprite:setPosition(((x - 1) * map.tilewidth) + bitmap:getWidth() / 2, 
+							(y * map.tileheight) - bitmap:getHeight() / 2)
+
+	local obj = bitmap.object
+
+	if obj == nil then
+		-- Create a new obj and get the body to assign it to bitmap
+		obj = {}
+		obj.properties = {}
+		obj.width = bitmap:getWidth()
+		obj.height = bitmap:getHeight()
+		obj.x = TempSprite:getX() - obj.width / 2
+		obj.y = TempSprite:getY() - obj.height / 2
+		obj.properties.BodyType="dynamic"
+		obj.shape = "rectangle"
+		if myShape == "circle" then obj.shape = "ellipse" end
+		obj.properties.Angle = bitmap:getRotation()
+		bitmap:setRotation(0)
+	end
+	
+	TempSprite:addChild(bitmap)
+	
+	IncludeBox2D()		
+	TempSprite.body = createBodyFromObject(obj)
+	
+	Self:addChild(TempSprite)
+	
+	Self.Sprites[obj.properties.NAME or #Self.Sprites + 1] = TempSprite
+
+end
+
 -- Gets image information and sets as background
 -- Not implemented yet, see file comments above
 local function createBackground(layer)
@@ -753,10 +791,12 @@ end
 
 local function updatePosition(object)
 	local body = object.body
+	
 	local bodyX, bodyY = body:getPosition()
 	object:setPosition(bodyX, bodyY)
 	object:setRotation(body:getAngle() * 57.2957795131)
 	-- 180 / math.pi = 57.2957795131
+	
 end
  
 local function updatePhysicsObjects(physWorld, scope)
